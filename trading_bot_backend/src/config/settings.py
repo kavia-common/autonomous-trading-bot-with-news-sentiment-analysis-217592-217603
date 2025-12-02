@@ -10,13 +10,20 @@ class Settings(BaseSettings):
     Application settings loaded from environment variables.
 
     Uses .env file when present. Do not commit real secrets; use .env and .env.example.
+    Accepts extra environment variables without failing validation to improve deploy safety.
     """
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", case_sensitive=False)
+    # Allow extra env vars so unexpected keys do not break startup.
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="ignore",
+    )
 
     # App
     ENV: str = Field(default="development", description="Environment name")
     LOG_LEVEL: str = Field(default="INFO", description="Log level for structured logging")
-    CORS_ALLOW_ORIGINS: List[str] = Field(default_factory=lambda: ["*"], description="Allowed CORS origins")
+    CORS_ALLOW_ORIGINS: List[str] = Field(default_factory=lambda: ["*"], description="Allowed CORS origins (CSV or list)")
     SCHEDULER_ENABLED: bool = Field(default=True, description="Enable periodic trading loop scheduler")
     SCHEDULER_INTERVAL_SECONDS: int = Field(default=300, description="Interval for trading loop in seconds")
 
@@ -43,6 +50,7 @@ class Settings(BaseSettings):
     POSITION_SIZE: int = Field(default=1, description="Default position size (lots or units)")
     SYMBOLS: List[str] = Field(default_factory=lambda: ["NIFTY", "BANKNIFTY"], description="Symbols universe")
 
+    # PUBLIC_INTERFACE
     def sqlalchemy_dsn(self) -> str:
         """
         Build SQLAlchemy DSN with PyMySQL driver if a full URL is not provided.
@@ -57,6 +65,7 @@ class Settings(BaseSettings):
 
 
 @lru_cache
+# PUBLIC_INTERFACE
 def get_settings() -> Settings:
     """Return cached settings instance."""
     return Settings()
