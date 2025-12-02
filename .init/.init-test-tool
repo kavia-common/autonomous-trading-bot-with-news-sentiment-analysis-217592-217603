@@ -1,0 +1,4 @@
+{
+    "command": "pytest",
+    "working_directory": "/home/kavia/workspace/code-generation/autonomous-trading-bot-with-news-sentiment-analysis-217592-217603/trading_bot_backend"
+}
