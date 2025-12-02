@@ -1,7 +1,7 @@
 from functools import lru_cache
-from typing import List, Optional
+from typing import List, Optional, Literal, Union
 
-from pydantic import Field
+from pydantic import Field, AnyUrl
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -20,10 +20,52 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    # App
+    # App/Server URLs and CORS
+    backend_url: Optional[Union[AnyUrl, str]] = Field(
+        default=None, alias="BACKEND_URL", description="Public backend base URL"
+    )
+    frontend_url: Optional[Union[AnyUrl, str]] = Field(
+        default=None, alias="FRONTEND_URL", description="Frontend base URL"
+    )
+    ws_url: Optional[Union[AnyUrl, str]] = Field(
+        default=None, alias="WS_URL", description="WebSocket base URL"
+    )
+    site_url: Optional[Union[AnyUrl, str]] = Field(
+        default=None, alias="SITE_URL", description="Site URL used for redirects"
+    )
+
+    # Backwards-compatible existing CORS setting + new aliases
+    CORS_ALLOW_ORIGINS: List[str] = Field(
+        default_factory=lambda: ["*"],
+        description="Allowed CORS origins (CSV or list)",
+        alias="ALLOW_ORIGINS",
+    )
+    allowed_origins: Optional[Union[List[str], str]] = Field(
+        default=None, alias="ALLOW_ORIGINS", description="Alias for CORS allow origins"
+    )
+    allowed_headers: Optional[Union[List[str], str]] = Field(
+        default=None, alias="ALLOW_HEADERS", description="CORS allowed headers"
+    )
+    allowed_methods: Optional[Union[List[str], str]] = Field(
+        default=None, alias="ALLOW_METHODS", description="CORS allowed methods"
+    )
+    cors_max_age: int = Field(default=600, alias="CORS_MAX_AGE", description="CORS preflight max age (seconds)")
+    cookie_domain: Optional[str] = Field(default=None, alias="COOKIE_DOMAIN", description="Cookie domain")
+    trust_proxy: bool = Field(default=False, alias="TRUST_PROXY", description="Trust proxy headers (X-Forwarded-*)")
+    host: str = Field(default="0.0.0.0", alias="HOST", description="App host binding")
+    uvicorn_host: str = Field(default="0.0.0.0", alias="UVICORN_HOST", description="Uvicorn host binding")
+    uvicorn_workers: int = Field(default=1, alias="UVICORN_WORKERS", description="Uvicorn workers")
+    node_env: Literal["development", "production", "test"] = Field(
+        default="development", alias="NODE_ENV", description="Node-style environment"
+    )
+    request_timeout_ms: int = Field(default=30000, alias="REQUEST_TIMEOUT_MS", description="Request timeout (ms)")
+    rate_limit_window_s: int = Field(default=60, alias="RATE_LIMIT_WINDOW_S", description="Rate limit window (s)")
+    rate_limit_max: int = Field(default=100, alias="RATE_LIMIT_MAX", description="Rate limit max requests per window")
+    port: int = Field(default=3001, alias="PORT", description="App port")
+
+    # Existing App controls
     ENV: str = Field(default="development", description="Environment name")
     LOG_LEVEL: str = Field(default="INFO", description="Log level for structured logging")
-    CORS_ALLOW_ORIGINS: List[str] = Field(default_factory=lambda: ["*"], description="Allowed CORS origins (CSV or list)")
     SCHEDULER_ENABLED: bool = Field(default=True, description="Enable periodic trading loop scheduler")
     SCHEDULER_INTERVAL_SECONDS: int = Field(default=300, description="Interval for trading loop in seconds")
 
@@ -71,20 +113,21 @@ def get_settings() -> Settings:
     return Settings()
 
 
-settings = get_settings()
-
+# Note: avoid instantiating at import time to keep lazy loading.
+# Use get_settings() in call sites to access settings.
 
 # PUBLIC_INTERFACE
 def get_settings_summary() -> dict:
     """Return a sanitized summary of settings (for health and debugging)."""
+    s = get_settings()
     return {
-        "ENV": settings.ENV,
-        "LOG_LEVEL": settings.LOG_LEVEL,
-        "SCHEDULER_ENABLED": settings.SCHEDULER_ENABLED,
-        "SCHEDULER_INTERVAL_SECONDS": settings.SCHEDULER_INTERVAL_SECONDS,
-        "DB": f"{settings.MYSQL_DB}@{settings.MYSQL_URL}:{settings.MYSQL_PORT}",
-        "CORS_ALLOW_ORIGINS": settings.CORS_ALLOW_ORIGINS,
-        "SYMBOLS": settings.SYMBOLS,
-        "NewsAPI_configured": bool(settings.NEWSAPI_KEY),
-        "Zerodha_configured": bool(settings.ZERODHA_API_KEY and settings.ZERODHA_API_SECRET),
+        "ENV": s.ENV,
+        "LOG_LEVEL": s.LOG_LEVEL,
+        "SCHEDULER_ENABLED": s.SCHEDULER_ENABLED,
+        "SCHEDULER_INTERVAL_SECONDS": s.SCHEDULER_INTERVAL_SECONDS,
+        "DB": f"{s.MYSQL_DB}@{s.MYSQL_URL}:{s.MYSQL_PORT}",
+        "CORS_ALLOW_ORIGINS": s.CORS_ALLOW_ORIGINS,
+        "SYMBOLS": s.SYMBOLS,
+        "NewsAPI_configured": bool(s.NEWSAPI_KEY),
+        "Zerodha_configured": bool(s.ZERODHA_API_KEY and s.ZERODHA_API_SECRET),
     }

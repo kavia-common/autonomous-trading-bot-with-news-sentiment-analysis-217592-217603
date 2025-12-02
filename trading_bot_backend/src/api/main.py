@@ -5,7 +5,7 @@ from typing import List
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from src.config.settings import settings, get_settings_summary
+from src.config.settings import get_settings, get_settings_summary
 from src.core.logging_config import configure_logging
 from src.db.session import init_db, close_db
 from src.routers.bot import router as bot_router
@@ -19,6 +19,7 @@ from src.services.sentiment_service import SentimentService
 # Configure structured logging early
 configure_logging()
 logger = logging.getLogger("trading_bot")
+settings = get_settings()
 
 # Global scheduler instance
 trading_scheduler: TradingScheduler | None = None
